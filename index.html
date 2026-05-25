@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roue de tirage</title>
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet" />
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+      --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem;
+      --color-bg: #f7f6f2; --color-surface: #f9f8f5; --color-surface-2: #fbfbf9; --color-surface-offset: #edeae5;
+      --color-border: #d4d1ca; --color-text: #28251d; --color-text-muted: #6f6c64; --color-text-faint: #aaa69d;
+      --color-primary: #01696f; --color-primary-hover: #0c4e54; --color-error: #a12c7b;
+      --radius-md: 0.75rem; --radius-lg: 1rem; --radius-xl: 1.25rem; --radius-full: 9999px;
+      --shadow-sm: 0 1px 2px rgb(40 37 29 / 0.08); --shadow-md: 0 8px 24px rgb(40 37 29 / 0.10); --shadow-lg: 0 18px 42px rgb(40 37 29 / 0.14);
+      --transition-interactive: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      --font-body: 'Satoshi', 'Inter', sans-serif;
+      --header-height: 0px;
+      --page-padding-y: var(--space-4);
+      --page-gap: var(--space-4);
+      --wheel-card-padding: 0.875rem;
+      --wheel-stage-gap: 0.75rem;
+      --controls-height: 40px;
+      --result-height: 92px;
+      --app-height: calc(100vh - (var(--page-padding-y) * 2) - var(--header-height) - var(--page-gap));
+    }
+    [data-theme="dark"] {
+      --color-bg: #171614; --color-surface: #1c1b19; --color-surface-2: #201f1d; --color-surface-offset: #2a2825;
+      --color-border: #3a3834; --color-text: #e4e0d8; --color-text-muted: #a59e93; --color-text-faint: #726e66;
+      --color-primary: #4f98a3; --color-primary-hover: #74b1b9; --color-error: #d163a7;
+      --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.25); --shadow-md: 0 8px 24px rgb(0 0 0 / 0.30); --shadow-lg: 0 18px 42px rgb(0 0 0 / 0.40);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: none; text-size-adjust: none; overflow: hidden; }
+    body {
+      margin: 0; min-height: 100vh; overflow: hidden; font-family: var(--font-body); font-size: var(--text-base); line-height: 1.5;
+      color: var(--color-text); background:
+        radial-gradient(circle at top, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 35%),
+        linear-gradient(180deg, var(--color-bg), var(--color-surface));
+    }
+    button, textarea { font: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+    .page {
+      width: min(100vw - 1rem, 1480px); height: 100vh; margin: 0 auto; padding: var(--page-padding-y) 0;
+      display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--page-gap); overflow: hidden;
+    }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); min-height: 0; }
+    .brand { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+    .logo { width: 2.75rem; height: 2.75rem; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 60%, white)); color: white; box-shadow: var(--shadow-sm); flex: 0 0 auto; }
+    h1 { margin: 0; font-size: var(--text-xl); line-height: 1.1; }
+    .subtitle { margin: 0.25rem 0 0; color: var(--color-text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+    .theme-toggle, .btn {
+      min-height: 34px; border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent); border-radius: 0.625rem;
+      background: var(--color-surface-2); color: var(--color-text); padding: 0.4rem 0.75rem; box-shadow: var(--shadow-sm);
+      transition: background var(--transition-interactive), border-color var(--transition-interactive), color var(--transition-interactive), transform var(--transition-interactive), box-shadow var(--transition-interactive);
+    }
+    .btn:hover:not(:disabled), .theme-toggle:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--color-primary); color: #fff; border-color: transparent; }
+    .btn-primary:hover:not(:disabled) { background: var(--color-primary-hover); }
+    .btn-danger { background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface)); }
+    .layout {
+      display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 420px); gap: var(--space-4);
+      align-items: stretch; min-height: 0; height: var(--app-height); max-height: var(--app-height); overflow: hidden;
+    }
+    .panel, .wheel-card, .result-card {
+      min-width: 0; background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent); border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md); backdrop-filter: blur(10px);
+    }
+    .wheel-card { padding: var(--wheel-card-padding); height: 100%; max-height: var(--app-height); overflow: hidden; }
+    .wheel-card:fullscreen {
+      width: 100vw; height: 100vh; max-width: none; margin: 0; border-radius: 0; padding: 0;
+      background: radial-gradient(circle at top, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 28%), var(--color-bg);
+      display: block; overflow: hidden;
+    }
+    .fullscreen-layout { display: block; height: 100%; }
+    .wheel-card:fullscreen .fullscreen-layout {
+      display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr); gap: 0;
+      align-items: stretch; min-height: 100vh; height: 100vh;
+    }
+    .wheel-stage {
+      display: grid; gap: var(--wheel-stage-gap); align-content: stretch; min-height: 0; height: 100%;
+      grid-template-rows: minmax(0, 1fr) auto auto;
+    }
+    .wheel-card:fullscreen .wheel-stage { min-height: 100vh; height: 100vh; padding: var(--space-4); }
+    .wheel-wrap {
+      --wheel-size: min(100%, calc(var(--app-height) - (var(--wheel-card-padding) * 2) - (var(--wheel-stage-gap) * 2) - var(--controls-height) - var(--result-height) - 0.5rem));
+      position: relative; display: grid; place-items: center; min-height: 0; height: 100%;
+    }
+    .wheel-card:fullscreen .wheel-wrap { --wheel-size: min(calc(100vh - 12rem), calc(100vw - 28rem), 920px); }
+    .pointer {
+      position: absolute; left: calc(50% + (min(var(--wheel-size), 100%) / 2) - 1px); top: 50%; transform: translate(0, -50%);
+      width: 0; height: 0; border-top: 18px solid transparent; border-bottom: 18px solid transparent;
+      border-right: 28px solid color-mix(in srgb, var(--color-text) 80%, white 20%); filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.18)); z-index: 3;
+    }
+    .wheel-shell {
+      width: min(var(--wheel-size), 100%); aspect-ratio: 1; border-radius: 50%; padding: 12px;
+      background: linear-gradient(145deg, color-mix(in srgb, var(--color-surface-offset) 85%, white), color-mix(in srgb, var(--color-surface-offset) 92%, black 8%));
+      box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.6), var(--shadow-lg);
+    }
+    canvas { width: 100%; height: 100%; display: block; border-radius: 50%; }
+    .hub {
+      position: absolute; width: 76px; aspect-ratio: 1; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, color-mix(in srgb, white 85%, var(--color-surface)), var(--color-surface-offset));
+      border: 8px solid color-mix(in srgb, var(--color-surface) 75%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-text) 10%, transparent), var(--shadow-sm);
+    }
+    .controls { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; min-height: var(--controls-height); }
+    .result-card { margin-top: 0; padding: 0.75rem; min-height: var(--result-height); }
+    .result-label { margin: 0 0 0.35rem; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .result-value { margin: 0; font-size: var(--text-lg); font-weight: 700; word-break: break-word; overflow-wrap: anywhere; }
+    .status { margin-top: var(--space-3); color: var(--color-text-muted); font-size: var(--text-sm); min-height: 1.5em; }
+    .side-stack { display: grid; gap: var(--space-4); align-content: start; min-height: 0; height: 100%; overflow: hidden; }
+    details.panel, .history-card { overflow: hidden; }
+    summary { list-style: none; padding: var(--space-4); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); cursor: pointer; font-weight: 700; }
+    summary::-webkit-details-marker { display: none; }
+    .summary-note { color: var(--color-text-muted); font-size: var(--text-sm); font-weight: 500; }
+    .chevron { width: 0.8rem; height: 0.8rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform var(--transition-interactive); }
+    details[open] .chevron { transform: rotate(225deg); }
+    .panel-body { padding: 0 0.875rem 0.875rem; display: grid; gap: 0.75rem; min-height: 0; }
+    .field { display: grid; gap: var(--space-2); }
+    .label-row { display: flex; justify-content: space-between; gap: var(--space-3); align-items: baseline; flex-wrap: wrap; }
+    label { font-size: var(--text-sm); font-weight: 700; }
+    .hint { color: var(--color-text-muted); font-size: var(--text-xs); }
+    textarea {
+      width: 100%; min-height: 180px; resize: vertical; padding: var(--space-4); border-radius: var(--radius-lg);
+      border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent); background: var(--color-surface-2); color: var(--color-text);
+      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.04);
+    }
+    .button-grid, .meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+    .stat { padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface-2); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); }
+    .stat-label { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .stat-value { margin-top: var(--space-2); font-size: var(--text-lg); font-weight: 700; overflow-wrap: anywhere; }
+    .notice { padding: var(--space-4); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); color: var(--color-text); font-size: var(--text-sm); overflow-wrap: anywhere; }
+    .history-card { padding: var(--space-4); min-height: 0; height: auto; overflow: hidden; align-self: start; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+    .history-meta { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .history-list, .fullscreen-history-list { min-height: 0; overflow: auto; display: grid; gap: var(--space-2); padding-right: var(--space-1); }
+    .history-list { max-height: min(40vh, 24rem); }
+    .history-empty, .history-item {
+      border-radius: var(--radius-lg); background: var(--color-surface-2); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+      padding: var(--space-3) var(--space-4); min-height: 0;
+    }
+    .history-item strong { display: block; margin-bottom: 0.15rem; line-height: 1.25; overflow-wrap: anywhere; }
+    .history-item time { font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.2; }
+    .fullscreen-history { display: none; min-height: 0; }
+    .history-panel {
+      width: 100%; background: color-mix(in srgb, var(--color-surface) 94%, transparent); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+      border-radius: var(--radius-xl); box-shadow: var(--shadow-md); padding: var(--space-5); display: grid; gap: var(--space-4); min-height: 100%; grid-template-rows: auto auto 1fr;
+    }
+    .wheel-card:fullscreen .fullscreen-history {
+      display: flex; min-height: 100vh; height: 100vh; padding: var(--space-4); border-left: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+      background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+    }
+    .wheel-card:fullscreen .history-panel { min-height: 100%; height: 100%; }
+    @media (max-width: 1260px) {
+      html, body { overflow: auto; }
+      .page { width: min(100vw - 0.75rem, 100%); height: auto; min-height: 100vh; overflow: visible; }
+      .layout { grid-template-columns: 1fr; height: auto; max-height: none; overflow: visible; }
+      .wheel-card, .side-stack { height: auto; }
+    }
+    @media (max-width: 920px) {
+      .wheel-wrap { --wheel-size: min(100%, 78vw); }
+      .button-grid, .meta-grid { grid-template-columns: 1fr; }
+      .controls { flex-direction: column; }
+      .controls .btn { width: 100%; }
+      .pointer { border-top-width: 15px; border-bottom-width: 15px; border-right-width: 24px; }
+      .hub { width: 62px; }
+      .wheel-card:fullscreen .fullscreen-layout { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+      .wheel-card:fullscreen .wheel-stage { min-height: 100vh; height: auto; }
+      .wheel-card:fullscreen .fullscreen-history { min-height: 100vh; height: auto; border-left: 0; border-top: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="8"></circle>
+            <path d="M12 4v5"></path><path d="M20 12h-5"></path><path d="M12 20v-5"></path><path d="M4 12h5"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>Roue de tirage</h1>
+          <p class="subtitle">Tirage local avec historique et panneau de réglages repliable.</p>
+        </div>
+      </div>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Basculer le thème"><span aria-hidden="true">◐</span></button>
+    </header>
+
+    <main class="layout">
+      <section class="wheel-card" aria-labelledby="wheel-title">
+        <div class="fullscreen-layout">
+          <div class="wheel-stage">
+            <div class="wheel-wrap">
+              <div class="pointer" aria-hidden="true"></div>
+              <div class="wheel-shell"><canvas id="wheelCanvas" width="820" height="820" aria-labelledby="wheel-title"></canvas></div>
+              <div class="hub" aria-hidden="true"></div>
+            </div>
+            <div class="controls" aria-label="Actions principales">
+              <button id="fullscreenBtn" class="btn" type="button">Plein écran</button>
+              <button id="shuffleBtn" class="btn" type="button">Mélanger la roue</button>
+              <button id="spinBtn" class="btn btn-primary" type="button">Lancer le tirage</button>
+            </div>
+            <section class="result-card" aria-live="polite" aria-atomic="true">
+              <p class="result-label">Valeur tirée</p>
+              <p id="resultValue" class="result-value">Aucun tirage pour le moment.</p>
+              <p id="statusText" class="status">Charge une liste valide ou recharge une sauvegarde pour commencer.</p>
+            </section>
+          </div>
+          <aside class="fullscreen-history" aria-label="Historique des tirages en plein écran">
+            <section class="history-panel">
+              <div>
+                <h2>Historique des tirages</h2>
+                <p>Affichage des résultats enregistrés avec leur date et heure locale.</p>
+                <div id="fullscreenHistoryCount" class="history-meta">0 tirage historisé</div>
+              </div>
+              <button id="clearHistoryFullscreenBtn" class="btn" type="button">Effacer l’historique</button>
+              <div id="fullscreenHistoryList" class="fullscreen-history-list" aria-live="polite"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <div class="side-stack">
+        <aside class="history-card panel" aria-labelledby="historyPanelTitle">
+          <div class="panel-body">
+            <section class="field" aria-labelledby="historyPanelTitle">
+              <div class="history-header">
+                <div>
+                  <label id="historyPanelTitle">Historique des tirages</label>
+                  <div id="historyCount" class="history-meta">0 tirage historisé</div>
+                </div>
+                <button id="clearHistoryBtn" class="btn" type="button">Effacer l’historique</button>
+              </div>
+              <div id="historyList" class="history-list" aria-live="polite"></div>
+            </section>
+          </div>
+        </aside>
+
+        <aside>
+          <details class="panel" open>
+            <summary>
+              <span>Réglages <span class="summary-note">Liste, sauvegarde et maintenance</span></span>
+              <span class="chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="panel-body">
+              <div class="field">
+                <div class="label-row">
+                  <label for="entriesInput">Valeurs</label>
+                  <span class="hint">Une valeur par ligne, lignes vides et lignes commençant par # ignorées.</span>
+                </div>
+                <textarea id="entriesInput" spellcheck="false" placeholder="# Exemple&#10;Alice&#10;Bob&#10;Charlie"></textarea>
+              </div>
+              <div class="button-grid">
+                <button id="saveBtn" class="btn" type="button">Sauvegarder la liste</button>
+                <button id="loadBtn" class="btn" type="button">Recharger la liste</button>
+                <button id="dedupeBtn" class="btn" type="button">Dédoublonner</button>
+                <button id="resetBtn" class="btn btn-danger" type="button">Réinitialiser la liste</button>
+              </div>
+              <div class="meta-grid" aria-label="Statistiques de la liste">
+                <div class="stat"><div class="stat-label">Entrées valides</div><div id="validCount" class="stat-value">0</div></div>
+                <div class="stat"><div class="stat-label">Segments affichés</div><div id="segmentCount" class="stat-value">0</div></div>
+              </div>
+              <div class="notice">Le bouton “Mélanger la roue” change uniquement l’ordre affiché sur la roue, sans modifier le texte source des réglages.</div>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const STORAGE_KEYS = { entries: 'wheel-draw.entries.v1', history: 'wheel-draw.history.v1' };
+      const SPIN_DURATION = 10000;
+      const EXTRA_TURNS_MIN = 7;
+      const EXTRA_TURNS_MAX = 10;
+      const POINTER_ANGLE = 0;
+      const INITIAL_ROTATION = -Math.PI / 2;
+      const palette = ['#de3c4b', '#0e63f4', '#2f9e44', '#f08c00', '#7c3aed', '#e8590c', '#0c8599', '#c2255c', '#74b816', '#fab005'];
+
+      const els = {
+        canvas: document.getElementById('wheelCanvas'),
+        entriesInput: document.getElementById('entriesInput'),
+        saveBtn: document.getElementById('saveBtn'),
+        loadBtn: document.getElementById('loadBtn'),
+        dedupeBtn: document.getElementById('dedupeBtn'),
+        resetBtn: document.getElementById('resetBtn'),
+        shuffleBtn: document.getElementById('shuffleBtn'),
+        spinBtn: document.getElementById('spinBtn'),
+        fullscreenBtn: document.getElementById('fullscreenBtn'),
+        resultValue: document.getElementById('resultValue'),
+        statusText: document.getElementById('statusText'),
+        validCount: document.getElementById('validCount'),
+        segmentCount: document.getElementById('segmentCount'),
+        historyList: document.getElementById('historyList'),
+        clearHistoryBtn: document.getElementById('clearHistoryBtn'),
+        clearHistoryFullscreenBtn: document.getElementById('clearHistoryFullscreenBtn'),
+        fullscreenHistoryList: document.getElementById('fullscreenHistoryList'),
+        historyCount: document.getElementById('historyCount'),
+        fullscreenHistoryCount: document.getElementById('fullscreenHistoryCount'),
+        themeToggle: document.querySelector('[data-theme-toggle]')
+      };
+
+      const ctx = els.canvas.getContext('2d');
+      const state = { entries: [], displayedEntries: [], rotation: INITIAL_ROTATION, spinning: false, history: [] };
+
+      function applyTheme() {
+        const root = document.documentElement;
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        let manualTheme = null;
+        const apply = () => root.setAttribute('data-theme', manualTheme || (media.matches ? 'dark' : 'light'));
+        apply();
+        media.addEventListener('change', () => { if (!manualTheme) apply(); drawWheel(); });
+        els.themeToggle.addEventListener('click', () => {
+          const current = root.getAttribute('data-theme') || (media.matches ? 'dark' : 'light');
+          manualTheme = current === 'dark' ? 'light' : 'dark';
+          apply();
+          drawWheel();
+        });
+      }
+
+      function syncLayoutMetrics() {
+        const page = document.querySelector('.page');
+        const header = document.querySelector('.topbar');
+        const controls = document.querySelector('.controls');
+        const result = document.querySelector('.result-card');
+        const headerHeight = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+        const controlsHeight = controls ? Math.ceil(controls.getBoundingClientRect().height) : 52;
+        const resultHeight = result ? Math.ceil(result.getBoundingClientRect().height) : 108;
+        page.style.setProperty('--header-height', `${headerHeight}px`);
+        page.style.setProperty('--controls-height', `${controlsHeight}px`);
+        page.style.setProperty('--result-height', `${resultHeight}px`);
+      }
+
+      function parseEntries(text) {
+        return text.split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith('#'));
+      }
+
+      function uniqueStable(values) {
+        const seen = new Set();
+        return values.filter(value => seen.has(value) ? false : (seen.add(value), true));
+      }
+
+      function shuffleArray(values) {
+        const arr = [...values];
+        for (let i = arr.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      function localDateTime(value) {
+        return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value));
+      }
+
+      function pickTextColor(hex) {
+        const c = hex.replace('#', '');
+        const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+        return ((0.299 * r + 0.587 * g + 0.114 * b) / 255) > 0.62 ? '#1b1b1b' : '#ffffff';
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+      }
+
+      function wrapWords(words, maxWidth) {
+        if (!words.length) return [''];
+        const lines = [];
+        let current = words[0];
+        for (let i = 1; i < words.length; i += 1) {
+          const test = `${current} ${words[i]}`;
+          if (ctx.measureText(test).width <= maxWidth) current = test;
+          else { lines.push(current); current = words[i]; }
+        }
+        lines.push(current);
+        if (lines.length <= 2) return lines;
+        return [lines.slice(0, -1).join(' '), lines[lines.length - 1]];
+      }
+
+      function drawWrappedLabel(label, x, y, maxWidth, fontSize, color) {
+        const words = String(label).split(/\s+/).filter(Boolean);
+        let size = fontSize;
+        let lines = [String(label)];
+        while (size > 14) {
+          ctx.font = `700 ${size}px Satoshi, sans-serif`;
+          lines = wrapWords(words, maxWidth);
+          const widest = Math.max(...lines.map(line => ctx.measureText(line).width), 0);
+          if (lines.length <= 2 && widest <= maxWidth) break;
+          size -= 1;
+        }
+        ctx.font = `700 ${size}px Satoshi, sans-serif`;
+        ctx.fillStyle = color;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        const lineHeight = size * 0.98;
+        const startY = y - ((lines.length - 1) * lineHeight) / 2;
+        lines.forEach((line, index) => ctx.fillText(line, x, startY + index * lineHeight));
+      }
+
+      function getCss(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      }
+
+      function drawWheel() {
+        const { width, height } = els.canvas;
+        ctx.clearRect(0, 0, width, height);
+        const cx = width / 2, cy = height / 2;
+        const radius = Math.min(width, height) / 2 - 24;
+        const entries = state.displayedEntries;
+        if (!entries.length) {
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.beginPath(); ctx.fillStyle = getCss('--color-surface-offset'); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = getCss('--color-text-muted');
+          ctx.font = '600 34px Satoshi, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('Liste vide', 0, -10);
+          ctx.font = '500 22px Satoshi, sans-serif'; ctx.fillText('Ajoute des valeurs dans les réglages', 0, 34);
+          ctx.restore();
+          return;
+        }
+        const sliceAngle = (Math.PI * 2) / entries.length;
+        entries.forEach((label, index) => {
+          const start = state.rotation + index * sliceAngle;
+          const end = start + sliceAngle;
+          const color = palette[index % palette.length];
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, radius, start, end); ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+          ctx.save();
+          ctx.translate(cx, cy); ctx.rotate(start + sliceAngle / 2);
+          const maxWidth = radius - 88;
+          const fontSize = Math.max(18, Math.min(34, 300 / entries.length + 14));
+          drawWrappedLabel(label, radius - 28, 0, maxWidth, fontSize, pickTextColor(color));
+          ctx.restore();
+        });
+        ctx.save(); ctx.translate(cx, cy); ctx.beginPath(); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 6; ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      }
+
+      function updateStats() {
+        const parsed = parseEntries(els.entriesInput.value);
+        els.validCount.textContent = String(parsed.length);
+        els.segmentCount.textContent = String(state.displayedEntries.length);
+        const valid = parsed.length >= 2;
+        els.spinBtn.disabled = state.spinning || state.displayedEntries.length < 2;
+        els.shuffleBtn.disabled = state.spinning || state.displayedEntries.length < 2;
+        els.dedupeBtn.disabled = state.spinning || parsed.length < 2;
+        if (!valid && !state.spinning) {
+          els.statusText.textContent = parsed.length === 0 ? 'Ajoute au moins deux entrées valides pour pouvoir lancer un tirage.' : 'Une seule entrée valide détectée, il en faut au moins deux.';
+        }
+      }
+
+      function refreshWheelFromSource({ shuffle = true } = {}) {
+        state.entries = parseEntries(els.entriesInput.value);
+        state.displayedEntries = shuffle ? shuffleArray(state.entries) : [...state.entries];
+        if (state.displayedEntries.length < 2) els.resultValue.textContent = 'Aucun tirage pour le moment.';
+        drawWheel();
+        updateStats();
+      }
+
+      function persistHistory() { localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(state.history)); }
+
+      function renderHistory() {
+        const count = state.history.length;
+        const label = `${count} tirage${count > 1 ? 's' : ''} historisé${count > 1 ? 's' : ''}`;
+        els.historyCount.textContent = label;
+        els.fullscreenHistoryCount.textContent = label;
+        if (!count) {
+          const empty = '<div class="history-empty">Aucun tirage enregistré.</div>';
+          els.historyList.innerHTML = empty;
+          els.fullscreenHistoryList.innerHTML = empty;
+          return;
+        }
+        const markup = state.history.slice().reverse().map(item => `<article class="history-item"><strong>${escapeHtml(item.value)}</strong><time datetime="${item.iso}">${escapeHtml(localDateTime(item.iso))}</time></article>`).join('');
+        els.historyList.innerHTML = markup;
+        els.fullscreenHistoryList.innerHTML = markup;
+      }
+
+      function saveEntries() {
+        const parsed = parseEntries(els.entriesInput.value);
+        if (parsed.length < 2) return window.alert('Il faut au moins deux entrées valides pour sauvegarder la liste.');
+        const hasExisting = localStorage.getItem(STORAGE_KEYS.entries);
+        if (hasExisting && !window.confirm('Une liste sauvegardée existe déjà. Veux-tu l\'écraser ?')) return;
+        localStorage.setItem(STORAGE_KEYS.entries, els.entriesInput.value);
+        els.statusText.textContent = 'Liste sauvegardée dans le navigateur.';
+      }
+
+      function loadEntries() {
+        const saved = localStorage.getItem(STORAGE_KEYS.entries);
+        if (!saved) return window.alert('Aucune liste sauvegardée n\'a été trouvée dans le navigateur.');
+        els.entriesInput.value = saved;
+        refreshWheelFromSource({ shuffle: true });
+        els.statusText.textContent = 'Liste rechargée depuis le navigateur et roue remélangée.';
+      }
+
+      function resetEntries() {
+        if (!window.confirm('Réinitialiser la zone de texte et vider la roue affichée ?')) return;
+        els.entriesInput.value = '';
+        state.entries = []; state.displayedEntries = []; state.rotation = INITIAL_ROTATION;
+        els.resultValue.textContent = 'Aucun tirage pour le moment.'; els.statusText.textContent = 'Liste réinitialisée.';
+        drawWheel(); updateStats();
+      }
+
+      function dedupeEntries() {
+        const parsed = parseEntries(els.entriesInput.value);
+        const unique = uniqueStable(parsed);
+        els.entriesInput.value = unique.join('\n');
+        refreshWheelFromSource({ shuffle: true });
+        els.statusText.textContent = `${parsed.length - unique.length} doublon(s) supprimé(s), première occurrence conservée.`;
+      }
+
+      function shuffleDisplayedWheel() {
+        if (state.displayedEntries.length < 2 || state.spinning) return;
+        state.displayedEntries = shuffleArray(state.displayedEntries);
+        drawWheel(); updateStats();
+        els.statusText.textContent = 'Ordre des segments remélangé sans modifier la liste source.';
+      }
+
+      function determineWinner(rotation) {
+        const count = state.displayedEntries.length;
+        const slice = (Math.PI * 2) / count;
+        const normalizedPointer = ((POINTER_ANGLE - rotation) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+        const index = ((Math.floor(normalizedPointer / slice) % count) + count) % count;
+        return { index, value: state.displayedEntries[index] };
+      }
+
+      function spinWheel() {
+        if (state.spinning) return;
+        refreshWheelFromSource({ shuffle: false });
+        if (state.displayedEntries.length < 2) return window.alert('Il faut au moins deux entrées valides pour lancer un tirage.');
+        state.spinning = true; updateStats();
+        els.statusText.textContent = 'Tirage en cours… la roue tourne pendant 10 secondes.';
+        els.resultValue.textContent = 'Tirage en cours…';
+        const slice = (Math.PI * 2) / state.displayedEntries.length;
+        const winnerIndex = Math.floor(Math.random() * state.displayedEntries.length);
+        const winnerCenterAngle = winnerIndex * slice + (slice / 2);
+        const extraTurns = EXTRA_TURNS_MIN + Math.random() * (EXTRA_TURNS_MAX - EXTRA_TURNS_MIN);
+        const current = state.rotation;
+        const currentNormalized = ((current % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        const desiredNormalized = ((POINTER_ANGLE - winnerCenterAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+        const delta = ((desiredNormalized - currentNormalized) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+        const target = current + (extraTurns * Math.PI * 2) + delta;
+        const start = performance.now();
+        const easeOutQuint = t => 1 - Math.pow(1 - t, 5);
+        const frame = now => {
+          const progress = Math.min((now - start) / SPIN_DURATION, 1);
+          state.rotation = current + (target - current) * easeOutQuint(progress);
+          drawWheel();
+          if (progress < 1) return requestAnimationFrame(frame);
+          state.rotation = target; drawWheel(); state.spinning = false;
+          const winner = determineWinner(state.rotation);
+          state.history.push({ value: winner.value, iso: new Date().toISOString() });
+          persistHistory(); renderHistory();
+          els.resultValue.textContent = winner.value;
+          els.statusText.textContent = `Tirage terminé. Segment gagnant : ${winner.value}.`;
+          updateStats();
+        };
+        requestAnimationFrame(frame);
+      }
+
+      async function toggleFullscreen() {
+        const card = document.querySelector('.wheel-card');
+        if (!document.fullscreenElement) {
+          try { await card.requestFullscreen(); } catch { window.alert("Le mode plein écran n'est pas disponible dans ce contexte."); }
+        } else {
+          await document.exitFullscreen();
+        }
+      }
+
+      function syncFullscreenState() {
+        const active = Boolean(document.fullscreenElement);
+        els.fullscreenBtn.textContent = active ? 'Quitter le plein écran' : 'Plein écran';
+      }
+
+      function clearHistory() {
+        if (!state.history.length) return;
+        if (!window.confirm('Effacer tout l\'historique des tirages ?')) return;
+        state.history = []; persistHistory(); renderHistory(); els.statusText.textContent = 'Historique effacé.';
+      }
+
+      function restoreHistory() {
+        try { state.history = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || '[]'); }
+        catch { state.history = []; }
+        renderHistory();
+      }
+
+      function bindEvents() {
+        els.entriesInput.addEventListener('input', () => refreshWheelFromSource({ shuffle: true }));
+        els.saveBtn.addEventListener('click', saveEntries);
+        els.loadBtn.addEventListener('click', loadEntries);
+        els.resetBtn.addEventListener('click', resetEntries);
+        els.dedupeBtn.addEventListener('click', dedupeEntries);
+        els.shuffleBtn.addEventListener('click', shuffleDisplayedWheel);
+        els.spinBtn.addEventListener('click', spinWheel);
+        els.fullscreenBtn.addEventListener('click', toggleFullscreen);
+        els.clearHistoryBtn.addEventListener('click', clearHistory);
+        els.clearHistoryFullscreenBtn.addEventListener('click', clearHistory);
+        document.addEventListener('fullscreenchange', () => { syncFullscreenState(); syncLayoutMetrics(); drawWheel(); });
+        window.addEventListener('resize', () => { syncLayoutMetrics(); drawWheel(); });
+      }
+
+      function bootstrap() {
+        applyTheme();
+        syncLayoutMetrics();
+        syncFullscreenState();
+        restoreHistory();
+        const saved = localStorage.getItem(STORAGE_KEYS.entries);
+        if (saved) {
+          els.entriesInput.value = saved;
+          refreshWheelFromSource({ shuffle: true });
+          els.statusText.textContent = 'Liste rechargée depuis le navigateur.';
+        } else {
+          els.entriesInput.value = '# Une valeur par ligne\nAlice Martin\nBob Dupont\nCharlie\nDenis';
+          refreshWheelFromSource({ shuffle: true });
+          els.statusText.textContent = 'Exemple chargé. Tu peux le remplacer puis sauvegarder ta propre liste.';
+        }
+      }
+
+      bindEvents();
+      bootstrap();
+    })();
+  </script>
+</body>
+</html>
